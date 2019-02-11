@@ -19,9 +19,9 @@ def preprocessing(img):
 
     result = np.zeros(img.shape)
 
-    result[0, :, :] = (0.229 * img[0, :, :] + 0.485) / 0.5 - 1
-    result[1, :, :] = (0.224 * img[1, :, :] + 0.456) / 0.5 - 1
-    result[2, :, :] = (0.225 * img[2, :, :] + 0.406) / 0.5 - 1
+    result[0, :, :] = (img[0, :, :] - 0.485) /  0.229
+    result[1, :, :] = (img[1, :, :] - 0.456) /  0.224
+    result[2, :, :] = (img[2, :, :] - 0.406) /  0.225
 
     return result
 
@@ -29,13 +29,13 @@ def preprocessing(img):
 def deprocessing(tensor):
     # tensor type: torch float tensor [0.0 ~ 1.0]
 
-    image = tensor.cpu().detach().numpy()           #.transpose(1, 2, 0)  # channel last
-    image[0] = np.clip(((image[0] + 1.0) * 0.5 - 0.485) / 0.229, 0, 1)
-    image[1] = np.clip(((image[1] + 1.0) * 0.5 - 0.456) / 0.224, 0, 1)
-    image[2] = np.clip(((image[2] + 1.0) * 0.5 - 0.406) / 0.225, 0, 1)
+    image = tensor.cpu().detach().numpy()             # channel last
+    image[0] = np.clip(image[0] * 0.229 + 0.485, 0.0, 1.0)
+    image[1] = np.clip(image[1] * 0.224 + 0.456, 0.0, 1.0)
+    image[2] = np.clip(image[2] * 0.225 + 0.406, 0.0, 1.0)
 
     image = image.transpose(1, 2, 0)
-    return image
+    return np.flip(image, 2)
 
 
 def totensor(img_array):

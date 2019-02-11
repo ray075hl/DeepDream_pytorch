@@ -1,14 +1,11 @@
-import torch
-from torch.autograd import Variable
+import math
+import sys
 
-import numpy as np
-import cv2
+from torch.autograd import Variable
 
 from model import Net
 from utils import *
 from config import *
-
-import math
 
 
 grads = {}
@@ -20,7 +17,7 @@ def save_grad(name):
     return hook
 
 
-def gradascent(img, model, step=0.005, max_iteration=iteration, max_loss=max_loss):
+def gradascent(img, model, step=0.05, max_iteration=iteration, max_loss=max_loss):
     for i in range(max_iteration):
         print(i)
         model.zero_grad()
@@ -36,19 +33,18 @@ def gradascent(img, model, step=0.005, max_iteration=iteration, max_loss=max_los
         if loss_ > max_loss:
             break
         else:
-            img = img + torch.clamp(grads_norm, -2.0, 2.0) * step
+            img = img + torch.clamp(grads_norm, -1.0, 1.0) * step
 
     return img
 
 
 if __name__ == '__main__':
     # initialization ------------------
-    image_path = '1.png'
-    ori_image = cv2.imread(image_path, -1)
+    image_path = sys.argv[1]
+    ori_image = np.flip(cv2.imread(image_path, -1), 2)  # BGR 2 RGB
     height, width = ori_image.shape[0], ori_image.shape[1]
 
     # image = 1.0 * cv2.imread(image_path, -1).transpose(2, 0, 1)/255.0  # channel first
-
 
     image_shape_list = []
 
@@ -67,13 +63,18 @@ if __name__ == '__main__':
             image = preprocessing(real_img)
             input_img = totensor(image)
 
+        # Dream
         input_img = Variable(input_img, requires_grad=True).to(device).float()
-        dream_img = gradascent(input_img, net)
+        dream_img = gradascent(input_img, net, step=step)
+
+        saved_img = deprocessing(dream_img.squeeze())
+        cv2.imwrite('saved_{}.png'.format(scale), (255*saved_img).astype('uint8'))
 
         print(dream_img.size())
+        # Detail injection
         if scale < 2:
             ups_dream_img = upscale(dream_img, size=image_shape_list[scale+1][::-1])
-            real_img_up = 1.0*cv2.resize(ori_image, image_shape_list[scale+1][::-1]).transpose(2, 0, 1)/255.0
+            real_img_up = 1.0 * cv2.resize(ori_image, image_shape_list[scale+1][::-1]).transpose(2, 0, 1)/255.0
             real_img_up = totensor(preprocessing(real_img_up)).float()
             real_img_cur= cv2.resize(ori_image, image_shape_list[scale][::-1])
             real_img_cur = 1.0 * cv2.resize(ori_image, image_shape_list[scale+1][::-1]).transpose(2, 0, 1)/255.0
@@ -82,10 +83,4 @@ if __name__ == '__main__':
             lost_detail = real_img_up - real_img_cur
             ups_dream_img += lost_detail
             input_img = ups_dream_img.clone()
-
-        saved_img = deprocessing(input_img.squeeze())
-        cv2.imwrite('saved_{}.png'.format(scale), (255*saved_img).astype('uint8'))
-    # dream_img = gradascent(input_img, net)
-    #
-
 
