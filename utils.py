@@ -37,14 +37,17 @@ def deprocessing(tensor):
     image = image.transpose(1, 2, 0)
     return image
 
+
 def totensor(img_array):
-    image = 1.0 * img_array.transpose(2, 0, 1) / 255.0  # channel first
+    image = 1.0 * img_array #/ 255.0  # channel first
+    print(image.shape)
     image = torch.from_numpy(image).unsqueeze(0)
-    return image
+    return image.to(device)
+
 
 def upscale(img, size):
     image = img.squeeze().cpu().detach().numpy().transpose(1, 2, 0)
     image = cv2.resize(image, size)
     image = image.transpose(2, 0, 1)
     image = torch.from_numpy(image).unsqueeze(0)
-    return image
+    return image.to(device)
